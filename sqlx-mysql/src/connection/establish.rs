@@ -53,7 +53,7 @@ impl<'a> DoHandshake<'a> {
 
         if options.enable_cleartext_plugin
             && matches!(
-                options.ssl_mode,
+                options.ssl_options.ssl_mode,
                 MySqlSslMode::Disabled | MySqlSslMode::Preferred
             )
         {

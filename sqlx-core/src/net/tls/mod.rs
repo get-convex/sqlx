@@ -70,7 +70,7 @@ pub use self::tls_native_tls::NativeTlsConnector as TlsConnector;
 #[cfg(all(feature = "_tls-rustls", not(feature = "_tls-native-tls")))]
 pub use self::tls_rustls::RustlsConnector as TlsConnector;
 #[cfg(not(any(feature = "_tls-native-tls", feature = "_tls-rustls")))]
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct TlsConnector(std::convert::Infallible);
 
 pub async fn connector(config: TlsConfig<'_>) -> crate::Result<TlsConnector> {
@@ -90,7 +90,7 @@ pub async fn connector(config: TlsConfig<'_>) -> crate::Result<TlsConnector> {
 pub async fn handshake<S, Ws>(
     socket: S,
     hostname: &str,
-    connector: TlsConnector,
+    connector: &TlsConnector,
     with_socket: Ws,
 ) -> crate::Result<Ws::Output>
 where

@@ -87,7 +87,7 @@ impl<S: Socket> Socket for RustlsSocket<S> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RustlsConnector {
     config: Arc<ClientConfig>,
 }
@@ -193,7 +193,7 @@ pub async fn connector(tls_config: TlsConfig<'_>) -> Result<RustlsConnector, Err
 pub async fn handshake<S>(
     socket: S,
     hostname: &str,
-    connector: RustlsConnector,
+    connector: &RustlsConnector,
 ) -> Result<RustlsSocket<S>, Error>
 where
     S: Socket,
@@ -202,7 +202,7 @@ where
 
     let mut socket = RustlsSocket {
         inner: StdSocket::new(socket),
-        state: ClientConnection::new(connector.config, host).map_err(Error::tls)?,
+        state: ClientConnection::new(connector.config.clone(), host).map_err(Error::tls)?,
         close_notify_sent: false,
     };
 

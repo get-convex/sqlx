@@ -38,7 +38,7 @@ impl<S: Socket> Socket for NativeTlsSocket<S> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NativeTlsConnector {
     connector: native_tls::TlsConnector,
 }
@@ -70,7 +70,7 @@ pub async fn connector(config: TlsConfig<'_>) -> crate::Result<NativeTlsConnecto
 pub async fn handshake<S: Socket>(
     socket: S,
     hostname: &str,
-    connector: NativeTlsConnector,
+    connector: &NativeTlsConnector,
 ) -> crate::Result<NativeTlsSocket<S>> {
     let mut mid_handshake = match connector
         .connector
