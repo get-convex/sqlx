@@ -41,7 +41,6 @@ impl<S: Socket> Socket for NativeTlsSocket<S> {
 #[derive(Clone)]
 pub struct NativeTlsConnector {
     connector: native_tls::TlsConnector,
-    hostname: String,
 }
 
 pub async fn connector(config: TlsConfig<'_>) -> crate::Result<NativeTlsConnector> {
@@ -65,19 +64,17 @@ pub async fn connector(config: TlsConfig<'_>) -> crate::Result<NativeTlsConnecto
     }
 
     let connector = builder.build().map_err(Error::tls)?;
-    Ok(NativeTlsConnector {
-        connector,
-        hostname: config.hostname.to_owned(),
-    })
+    Ok(NativeTlsConnector { connector })
 }
 
 pub async fn handshake<S: Socket>(
     socket: S,
+    hostname: &str,
     connector: NativeTlsConnector,
 ) -> crate::Result<NativeTlsSocket<S>> {
     let mut mid_handshake = match connector
         .connector
-        .connect(&connector.hostname, StdSocket::new(socket))
+        .connect(hostname, StdSocket::new(socket))
     {
         Ok(tls_stream) => return Ok(NativeTlsSocket { stream: tls_stream }),
         Err(HandshakeError::Failure(e)) => return Err(Error::tls(e)),

@@ -90,7 +90,6 @@ impl<S: Socket> Socket for RustlsSocket<S> {
 #[derive(Clone)]
 pub struct RustlsConnector {
     config: Arc<ClientConfig>,
-    host: ServerName<'static>,
 }
 
 pub async fn connector(tls_config: TlsConfig<'_>) -> Result<RustlsConnector, Error> {
@@ -186,21 +185,24 @@ pub async fn connector(tls_config: TlsConfig<'_>) -> Result<RustlsConnector, Err
         }
     };
 
-    let host = ServerName::try_from(tls_config.hostname.to_owned()).map_err(Error::tls)?;
-
     Ok(RustlsConnector {
         config: Arc::new(config),
-        host,
     })
 }
 
-pub async fn handshake<S>(socket: S, connector: RustlsConnector) -> Result<RustlsSocket<S>, Error>
+pub async fn handshake<S>(
+    socket: S,
+    hostname: &str,
+    connector: RustlsConnector,
+) -> Result<RustlsSocket<S>, Error>
 where
     S: Socket,
 {
+    let host = ServerName::try_from(hostname.to_owned()).map_err(Error::tls)?;
+
     let mut socket = RustlsSocket {
         inner: StdSocket::new(socket),
-        state: ClientConnection::new(connector.config, connector.host).map_err(Error::tls)?,
+        state: ClientConnection::new(connector.config, host).map_err(Error::tls)?,
         close_notify_sent: false,
     };
 
