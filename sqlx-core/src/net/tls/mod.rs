@@ -66,9 +66,31 @@ pub struct TlsConfig<'a> {
     pub client_key_path: Option<&'a CertificateInput>,
 }
 
+#[cfg(feature = "_tls-native-tls")]
+pub use self::tls_native_tls::NativeTlsConnector as TlsConnector;
+#[cfg(all(feature = "_tls-rustls", not(feature = "_tls-native-tls")))]
+pub use self::tls_rustls::RustlsConnector as TlsConnector;
+#[cfg(not(any(feature = "_tls-native-tls", feature = "_tls-rustls")))]
+#[derive(Clone)]
+pub struct TlsConnector(std::convert::Infallible);
+
+pub async fn connector(config: TlsConfig<'_>) -> crate::Result<TlsConnector> {
+    #[cfg(feature = "_tls-native-tls")]
+    return Ok(tls_native_tls::connector(config).await?);
+
+    #[cfg(all(feature = "_tls-rustls", not(feature = "_tls-native-tls")))]
+    return Ok(tls_rustls::connector(config).await?);
+
+    #[cfg(not(any(feature = "_tls-native-tls", feature = "_tls-rustls")))]
+    {
+        drop(config);
+        panic!("one of the `runtime-*-native-tls` or `runtime-*-rustls` features must be enabled")
+    }
+}
+
 pub async fn handshake<S, Ws>(
     socket: S,
-    config: TlsConfig<'_>,
+    connector: TlsConnector,
     with_socket: Ws,
 ) -> crate::Result<Ws::Output>
 where
@@ -77,18 +99,18 @@ where
 {
     #[cfg(feature = "_tls-native-tls")]
     return Ok(with_socket
-        .with_socket(tls_native_tls::handshake(socket, config).await?)
+        .with_socket(tls_native_tls::handshake(socket, connector).await?)
         .await);
 
     #[cfg(all(feature = "_tls-rustls", not(feature = "_tls-native-tls")))]
     return Ok(with_socket
-        .with_socket(tls_rustls::handshake(socket, config).await?)
+        .with_socket(tls_rustls::handshake(socket, connector).await?)
         .await);
 
     #[cfg(not(any(feature = "_tls-native-tls", feature = "_tls-rustls")))]
     {
-        drop((socket, config, with_socket));
-        panic!("one of the `runtime-*-native-tls` or `runtime-*-rustls` features must be enabled")
+        drop((socket, with_socket));
+        match connector.0 {}
     }
 }
 

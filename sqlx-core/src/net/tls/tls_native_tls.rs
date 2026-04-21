@@ -38,10 +38,13 @@ impl<S: Socket> Socket for NativeTlsSocket<S> {
     }
 }
 
-pub async fn handshake<S: Socket>(
-    socket: S,
-    config: TlsConfig<'_>,
-) -> crate::Result<NativeTlsSocket<S>> {
+#[derive(Clone)]
+pub struct NativeTlsConnector {
+    connector: native_tls::TlsConnector,
+    hostname: String,
+}
+
+pub async fn connector(config: TlsConfig<'_>) -> crate::Result<NativeTlsConnector> {
     let mut builder = native_tls::TlsConnector::builder();
 
     builder
@@ -62,8 +65,20 @@ pub async fn handshake<S: Socket>(
     }
 
     let connector = builder.build().map_err(Error::tls)?;
+    Ok(NativeTlsConnector {
+        connector,
+        hostname: config.hostname.to_owned(),
+    })
+}
 
-    let mut mid_handshake = match connector.connect(config.hostname, StdSocket::new(socket)) {
+pub async fn handshake<S: Socket>(
+    socket: S,
+    connector: NativeTlsConnector,
+) -> crate::Result<NativeTlsSocket<S>> {
+    let mut mid_handshake = match connector
+        .connector
+        .connect(&connector.hostname, StdSocket::new(socket))
+    {
         Ok(tls_stream) => return Ok(NativeTlsSocket { stream: tls_stream }),
         Err(HandshakeError::Failure(e)) => return Err(Error::tls(e)),
         Err(HandshakeError::WouldBlock(mid_handshake)) => mid_handshake,
